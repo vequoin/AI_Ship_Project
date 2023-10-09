@@ -3,6 +3,7 @@ import random
 
 class Ship:
     def __init__(self, D):
+        """Initializes the Ship with dimension D x D and generates its structure."""
         self.name = "Archaeopteryx"
         self.D = D
         self.ship = self.generate_ship()
@@ -10,6 +11,8 @@ class Ship:
         self.open_cells = self.get_open_cells()
 
     def generate_ship(self):
+        """Generates the ship's structure with rooms and pathways."""
+        # Create a D x D grid filled with 1's (walls/rooms)
         ship = [[1 for _ in range(self.D)] for _ in range(self.D)]
 
         start_cell = (random.randint(0, self.D - 1), random.randint(0, self.D - 1))
@@ -18,6 +21,7 @@ class Ship:
         fringe_cells = set(self.get_neighbors(start_cell))
 
         while fringe_cells:
+            #filter Cells which are not valid, valids cells have one open neighbor
             valid_cells = [cell for cell in fringe_cells if ship[cell[0]][cell[1]] and sum([1 - ship[nx][ny] for nx, ny in self.get_neighbors(cell)]) == 1]
 
             if not valid_cells:
@@ -25,23 +29,34 @@ class Ship:
 
             chosen_cell = random.choice(valid_cells)
             ship[chosen_cell[0]][chosen_cell[1]] = 0
+            
 
             fringe_cells.remove(chosen_cell)
             fringe_cells.update(self.get_neighbors(chosen_cell))
-
+            
         self.eliminate_dead_ends(ship)
         return ship
+    
 
     def eliminate_dead_ends(self, ship):
+        """Eliminates dead ends from the ship by making some of them open."""
+        # Find all cells that are dead-ends
         dead_ends = [(row, col) for row in range(self.D) for col in range(self.D) if
                      ship[row][col] == 0 and sum([1 - ship[nx][ny] for nx, ny in self.get_neighbors((row, col))]) == 1]
+        
+        required_length = len(dead_ends)//2
 
-        for dead_end in dead_ends:
-            if random.random() > 0.5:
-                potential_blocks = [cell for cell in self.get_neighbors(dead_end) if ship[cell[0]][cell[1]] == 1]
-                if potential_blocks:
-                    block_to_open = random.choice(potential_blocks)
-                    ship[block_to_open[0]][block_to_open[1]] = 0
+        while required_length < len(dead_ends):
+            random_dead_end = random.choice(dead_ends)
+            neighbours = self.get_neighbors(random_dead_end)
+            closed_neighbors = [(xi,yi) for xi,yi in neighbours if ship[xi][yi] == 1]
+            
+            if not closed_neighbors:
+                return
+            cell_to_open = random.choice(closed_neighbors)
+            ship[cell_to_open[0]][cell_to_open[1]] = 0
+            dead_ends = [(row, col) for row in range(self.D) for col in range(self.D) if
+                     ship[row][col] == 0 and sum([1 - ship[nx][ny] for nx, ny in self.get_neighbors((row, col))]) == 1]
 
     def get_open_cells(self):
         return [(i, j) for i, row in enumerate(self.ship) for j, cell in enumerate(row) if cell == 0]
@@ -56,10 +71,16 @@ class Ship:
         neighbors = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
         valid_cells = [(xi, yi) for xi, yi in neighbors if 0 <= xi < self.D and 0 <= yi < self.D and self.ship[xi][yi] == 0]
         return valid_cells
-
-
-    #def __str__(self):
-        #return "\n".join(" ".join(str(cell) for cell in row) for row in self.ship)
+    
+    def print_ship(self,ship):
+        for row in ship:
+            print(' '.join(str(cell) for cell in row))
+        print("End of Print")
+        print("\n")
+        
+        
+    def get_length(self):
+        return self.D
     
     def __str__(self):
         grid_str = ""
@@ -73,3 +94,4 @@ class Ship:
                     grid_str += "1 "
             grid_str += "\n"
         return grid_str
+
