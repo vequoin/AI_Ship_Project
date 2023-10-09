@@ -18,8 +18,8 @@ class Fire:
                 if curr_cell not in self.cells_on_fire:
                     neighbors_on_fire = self.get_burning_neighbors(curr_cell)
                     k = len(neighbors_on_fire)
-                    catch_probability = 1- (1 - self.q)**k
-                    if random.random() < catch_probability:
+                    fire_probability = 1- (1 - self.q)**k
+                    if random.random() < fire_probability:
                         next_cells_on_fire.add(curr_cell)
         self.cells_on_fire.update(next_cells_on_fire)
     
