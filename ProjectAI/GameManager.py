@@ -289,13 +289,6 @@ class GameManager:
         
     ########################################## Helper Functions Strategy 4 ##################################################
     
-    
-    def is_boundary(self, cell):
-        # Finds the boundaries of the ship
-        x, y = cell
-        m, n = len(self.ship.ship), len(self.ship.ship[0])
-    
-        return (0 <= x < m) and (0 <= y < n)
 
      # returns the manhatten distance of point 1 and point 2       
     def manhattan_distance(self, point1, point2):
@@ -362,9 +355,18 @@ class GameManager:
         m, n = len(self.ship.ship), len(self.ship.ship[0])
         return 0 <= x < m and 0 <= y < n
         
-    '''A utility function to get the bfs distance from the button to the bot for hueristic purposes'''
     def bfs_distance(self, start, target, fire_positions):
-        # Uses BFS to give the distance to the button
+        '''
+        Computes distance from start to target using BFS, avoiding fire_positions.
+    
+        Parameters:
+        - start: Starting position (x, y).
+        - target: Target position (x, y).
+        - fire_positions: Set of fire positions.
+    
+        Returns: 
+        - Shortest distance avoiding fire or infinity if not reachable.
+        '''
         queue = [start]
         visited = set()
         visited.add(start)
@@ -386,8 +388,19 @@ class GameManager:
             depth += 1
         return float('inf')
 
-    '''This is a heuristic function that calculates the bfs distance to the fire cells from the bot used to measure distances'''
+    
     def bfs_distance_fire(self, start,fire, fire_positions):
+        '''
+        Computes distance from start to the nearest fire using BFS.
+    
+        Parameters:
+        - start: Starting position (x, y).
+        - fire: A fire position.
+        - fire_positions: Set of fire positions.
+    
+        Returns:
+        - Distance to the nearest fire or negative infinity if not reachable.
+        '''
         # Uses BFS to give the distance from the bot to the fire
         queue = [start]
         visited = set()
@@ -441,15 +454,7 @@ class GameManager:
             else:
                 proximity[direction] = float('inf')
         return proximity
-    
-    
-    
-    def get_new_position_after_move(self, move):
-        # Returns the position of the bot after it moves.
-        current_x, current_y = self.bot.position  # assuming self.position is the bot's current position
-        delta_x, delta_y = move
-        new_x, new_y = current_x + delta_x, current_y + delta_y
-        return (new_x, new_y)
+
     
     ########################################## Strategy Four-Main functions ##################################################
     
