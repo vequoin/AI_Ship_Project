@@ -74,13 +74,6 @@ class Ship:
         neighbors = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
         valid_cells = [(xi, yi) for xi, yi in neighbors if 0 <= xi < self.D and 0 <= yi < self.D and self.ship[xi][yi] == 0]
         return valid_cells
-    
-    def print_ship(self,ship):
-        """Prints the ship's structure."""
-        for row in ship:
-            print(' '.join(str(cell) for cell in row))
-        print("End of Print")
-        print("\n")
         
         
     def get_length(self):
