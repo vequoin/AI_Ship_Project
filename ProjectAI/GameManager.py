@@ -9,16 +9,20 @@ import random
 
 class GameManager:
     def __init__(self, ship_size, q,bot_strategy):
-        self.ship = Ship(ship_size)
-        self.ship_length = ship_size
+        # Initialize the GameManager object with ship size, fire spread probability (q), and bot strategy.
+        self.ship = Ship(ship_size)  # Create a ship object with the given size.
+        self.ship_length = ship_size  # Store the ship size.
         self.bot_position, self.fire_position, self.button_position = self.initialize_game_elements()
-        self.q = q
-        self.fire = Fire(self.ship, q, self.fire_position)
-        self.bot_strategy = bot_strategy
-        self.bot = Bot(self.ship, bot_strategy,self.bot_position, self.button_position)
-        self.visited_nodes = set()
+        # Initialize positions for the bot, fire, and button.
+        self.q = q  # Set the fire spread probability.
+        self.fire = Fire(self.ship, q, self.fire_position)  # Create a Fire object on the ship.
+        self.bot_strategy = bot_strategy  # Store the selected bot strategy.
+        self.bot = Bot(self.ship, bot_strategy, self.bot_position, self.button_position)
+        # Create a Bot object with the ship, strategy, and initial positions.
+        self.visited_nodes = set()  # Initialize a set to store visited nodes.
         
     def initialize_game_elements(self):
+        # Initialize the positions of the bot, fire, and button on the ship.
         open_cells = self.ship.open_cells.copy()
         
         # Randomly fetching positions for bot, fire and button
@@ -37,6 +41,8 @@ class GameManager:
     
      
     def get_shortest_path_two(self):
+        # Find the shortest path to the button using BFS.
+        # Bot moves toward the button while avoiding cells already visited or on fire.
         visited = set()
         queue = deque([[self.bot.position]])  # queue to hold all paths; initially it has one path with only the start node
     
@@ -60,6 +66,8 @@ class GameManager:
         return None  # return None if there is no path to the button
         
     def get_better_short_path(self):
+        # Find an improved path to the button, considering the fire and visited cells.
+        # Avoid cells that are on fire or have been visited.
         visited = set()
         queue = deque([[self.bot.position]])  # queue to hold all paths; initially it has one path with only the start node
     
@@ -85,13 +93,18 @@ class GameManager:
     
     
     def strategy_three_shortest_path(self):
+        # Avoids the cells next to cells on fire
         path = self.find_path_strategy_three(True)
         if path:
+            # Returns if the path is found
             return path
         else:
+            # If no path is found, then try to find a path without avoiding the cells on fire
             return self.find_path_strategy_three(False)
     
     def find_path_strategy_three(self, avoiding):
+        # Finds the shortest path for the third bot.
+       
         visited = set()
         queue = deque([[self.bot.position]])  # queue to hold all paths; initially it has one path with only the start node
         rooms_to_avoid = self.cells_to_avoid(avoiding)
@@ -121,6 +134,7 @@ class GameManager:
     
     
     def strategy_one(self):
+        # The bot follows the shortest path without avoiding the fire.
         getPath = self.get_shortest_path_two()
         step = 0
         
@@ -159,6 +173,7 @@ class GameManager:
         ######################################## Strategy Two #################################################
         
     def strategy_two(self):
+        # The bot continuously seeks a better path to the button, adapting to the fire's spread.
         getPath = self.get_better_short_path()
         step = 1
 
@@ -175,7 +190,7 @@ class GameManager:
             if not getPath:
                 print("There is no available Path for the bot, You loose")
                 return "L"
-            #print(f"Cells on fire: {self.fire.cells_on_fire}")
+            
             self.bot.move(getPath[step])
             step += 1
             if self.bot.position in self.fire.cells_on_fire:
@@ -185,7 +200,7 @@ class GameManager:
                 print("Button is on fire, you lost")
                 return "L"
             self.fire.spread_fire()
-            #print(self)
+            
             if self.bot.position == self.button_position:
                 game_won = True
                 print("Congratz you have saved the crew and the ship")
@@ -195,6 +210,8 @@ class GameManager:
             return "L"
         
     def cells_to_avoid(self, avoiding):
+        # Identify cells to avoid during path calculation.
+        # It considers cells on fire and optionally neighboring cells as well.
         fire_neighbors = set()
         for cell in self.fire.cells_on_fire:
             neighbors = self.ship.get_open_neighbors(cell)
@@ -209,6 +226,7 @@ class GameManager:
 
 
     def strategy_three(self):
+        # The bot continuously seeks a better path to the button, adapting to the fire's spread. It also avoids the cells that are next to the cells on fire
         getPath = self.strategy_three_shortest_path()
         step = 1
         
@@ -225,7 +243,7 @@ class GameManager:
             if not getPath:
                 print("There is no available Path for the bot, You loose")
                 return "L"
-            #print(f"Cells on fire: {self.fire.cells_on_fire}")
+            
             self.bot.move(getPath[step])
             step += 1
             if self.bot.position in self.fire.cells_on_fire:
@@ -248,6 +266,7 @@ class GameManager:
     
     
     def is_boundary(self, cell):
+        # Finds the boundaries of the ship
         x, y = cell
         m, n = len(self.ship.ship), len(self.ship.ship[0])
     
@@ -255,10 +274,12 @@ class GameManager:
 
             
     def manhattan_distance(self, point1, point2):
+        # Returns the Manhattan distance
         return abs(point1[0] - point2[0]) + abs(point1[1] - point2[1])
 
     
     def predict_fire_spread(self, depth):
+        # Predicts the spread of fire up to 10 depths.
         generated = [row[:] for row in self.ship.ship]
 
         # Mark the current fire positions on the generated grid.
@@ -266,7 +287,7 @@ class GameManager:
             generated[fire_cell[0]][fire_cell[1]] = 'F'
 
         current_fire_positions = self.fire.cells_on_fire.copy()
-        all_fire_positions = set(current_fire_positions)  # to keep track of all fire positions
+        all_fire_positions = set(current_fire_positions)  # To keep track of all fire positions
         future_fire_positions = []
 
         for i in range(depth):
@@ -275,13 +296,13 @@ class GameManager:
             for cell in current_fire_positions:
                 all_neighbor_cells = self.get_open_cells(cell, generated)
                 for neighbor in all_neighbor_cells:
-                    if neighbor not in all_fire_positions:  # ensure fire doesn't spread to an already on-fire cell
+                    if neighbor not in all_fire_positions:  # Ensure fire doesn't spread to an already on-fire cell
                         k = sum(1 for adj_cell in self.get_neighbors(neighbor) if adj_cell in all_fire_positions)
                         catch_probability = 1 - (1 - self.q)**k
                         if random.random() < catch_probability:
                             next_fire_spread.add(neighbor)
                             generated[neighbor[0]][neighbor[1]] = 'F'
-            #print(generated)
+            
             if not next_fire_spread:
                 break         
             future_fire_positions.append(next_fire_spread)
@@ -291,6 +312,7 @@ class GameManager:
         return future_fire_positions
 
     def get_open_cells(self, cell, ship):
+        '''Gets all the open cells'''
         neighbors = self.get_neighbors(cell)
         return [neighbor for neighbor in neighbors if ship[neighbor[0]][neighbor[1]] == 0]
 
@@ -307,6 +329,7 @@ class GameManager:
         return 0 <= x < m and 0 <= y < n
     
     def bfs_distance(self, start, target, fire_positions):
+        # Uses BFS to give the distance to the button
         queue = [start]
         visited = set()
         visited.add(start)
@@ -329,6 +352,7 @@ class GameManager:
         return float('inf')
     
     def bfs_distance_fire(self, start,fire, fire_positions):
+        # Uses BFS to give the distance from the bot to the fire
         queue = [start]
         visited = set()
         visited.add(start)
@@ -353,6 +377,7 @@ class GameManager:
     
     
     def calculate_fire_proximity(self, bot_position, fire_positions):
+        # Uses BFS to give the distance from the bot to the fire in all directions
         proximity = {}
         for direction in ['up', 'down', 'left', 'right']:
             dx, dy = {
@@ -379,6 +404,7 @@ class GameManager:
     
     
     def get_new_position_after_move(self, move):
+        # Returns the position of the bot after it moves.
         current_x, current_y = self.bot.position  # assuming self.position is the bot's current position
         delta_x, delta_y = move
         new_x, new_y = current_x + delta_x, current_y + delta_y
@@ -388,7 +414,7 @@ class GameManager:
     
     
     def calculate_path_based_on_risk(self, start, goal, risk_map):
-        
+        # Calculates the new path based on the risk of running into the fire.
         temp_risk_map = [row.copy() for row in risk_map]
 
         VISITED_PENALTY = 40
@@ -428,6 +454,20 @@ class GameManager:
     ########################################## Strategy Four ##################################################
                 
     def strategy_four(self):
+        """
+        Strategy Four: Dynamic Risk Assessment and Adaptation
+
+        Overview:
+        This strategy dynamically evaluates the risks from predicted fire spread and adjusts the bot's path. 
+        When the bot is closer to the goal and the path is clearer, it switches to Strategy Two for direct navigation.
+    
+        Steps:
+        1. Compute fire proximity and shortest path to goal.
+        2. If fire is far (over 1.75x distance to goal) or bot is near goal (Manhattan distance < 6 and BFS distance < 8), use Strategy Two.
+        3. Predict fire spread over next 5 turns and create a 'risk map'.
+        4. Determine optimal path using risk map. If no path is found, it's a loss.
+        5. Move the bot based on the calculated path. After each move, fire spreads. Reaching the button means a win.
+        """
         curr_position = self.bot.position
         proximity = self.calculate_fire_proximity(curr_position, self.fire.cells_on_fire)
         distance_to_goal = self.bfs_distance(curr_position, self.button_position, self.fire.cells_on_fire)

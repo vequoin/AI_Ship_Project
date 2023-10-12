@@ -4,11 +4,11 @@ import random
 class Ship:
     def __init__(self, D):
         """Initializes the Ship with dimension D x D and generates its structure."""
-        self.name = "Archaeopteryx"
-        self.D = D
-        self.ship = self.generate_ship()
-        self.fire_instance = None
-        self.open_cells = self.get_open_cells()
+        self.name = "Archaeopteryx"  # Assigns a name to the ship.
+        self.D = D  # Sets the dimension of the ship.
+        self.ship = self.generate_ship()  # Generates the ship's structure.
+        self.fire_instance = None  # Initializes a variable for tracking fire on the ship.
+        self.open_cells = self.get_open_cells()  # Gets a list of open cells on the ship.
 
     def generate_ship(self):
         """Generates the ship's structure with rooms and pathways."""
@@ -59,20 +59,24 @@ class Ship:
                      ship[row][col] == 0 and sum([1 - ship[nx][ny] for nx, ny in self.get_neighbors((row, col))]) == 1]
 
     def get_open_cells(self):
+        """Returns a list of open cells on the ship."""
         return [(i, j) for i, row in enumerate(self.ship) for j, cell in enumerate(row) if cell == 0]
 
     def get_neighbors(self, cell):
+        """Returns the neighboring cells of a given cell."""
         x, y = cell
         neighbors = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
         return [(xi, yi) for xi, yi in neighbors if 0 <= xi < self.D and 0 <= yi < self.D]
 
     def get_open_neighbors(self, cell):
+        """Returns neighboring cells that are open."""
         x, y = cell
         neighbors = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
         valid_cells = [(xi, yi) for xi, yi in neighbors if 0 <= xi < self.D and 0 <= yi < self.D and self.ship[xi][yi] == 0]
         return valid_cells
     
     def print_ship(self,ship):
+        """Prints the ship's structure."""
         for row in ship:
             print(' '.join(str(cell) for cell in row))
         print("End of Print")
@@ -80,9 +84,11 @@ class Ship:
         
         
     def get_length(self):
+        """Returns the dimension of the ship."""
         return self.D
     
     def __str__(self):
+        """Returns a string representation of the ship's structure."""
         grid_str = ""
         for i, row in enumerate(self.ship):
             for j, cell in enumerate(row):
