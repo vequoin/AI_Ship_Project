@@ -9,20 +9,47 @@ import random
 
 class GameManager:
     def __init__(self, ship_size, q,bot_strategy):
-        # Initialize the GameManager object with ship size, fire spread probability (q), and bot strategy.
+        """
+        Initialize the GameManager class which manages the game's overall state, 
+        including the bot, fire spread, ship layout, and game elements' positions.
+
+        Args:
+            ship_size (int): The size (dimension) of the ship.
+            q (float): Probability of fire spread to neighboring cells.
+            bot_strategy (function): The strategy the bot uses to navigate.
+        """
+       
         self.ship = Ship(ship_size)  # Create a ship object with the given size.
+        
         self.ship_length = ship_size  # Store the ship size.
-        self.bot_position, self.fire_position, self.button_position = self.initialize_game_elements()
+        
         # Initialize positions for the bot, fire, and button.
+        self.bot_position, self.fire_position, self.button_position = self.initialize_game_elements()
+        
+         # Set the fire spread probability.
         self.q = q  # Set the fire spread probability.
-        self.fire = Fire(self.ship, q, self.fire_position)  # Create a Fire object on the ship.
-        self.bot_strategy = bot_strategy  # Store the selected bot strategy.
+        
+        # Create a Fire instance on the ship 
+        self.fire = Fire(self.ship, q, self.fire_position)  
+
+         # Store the selected bot strategy.
+        self.bot_strategy = bot_strategy  
+
+        # Create a Bot instance initialized with the ship, its strategy, and its initial and goal positions
         self.bot = Bot(self.ship, bot_strategy, self.bot_position, self.button_position)
-        # Create a Bot object with the ship, strategy, and initial positions.
-        self.visited_nodes = set()  # Initialize a set to store visited nodes.
+
+        # Initialize a set to keep track of nodes (positions) that have been visited during pathfinding
+        self.visited_nodes = set()  
         
     def initialize_game_elements(self):
-        # Initialize the positions of the bot, fire, and button on the ship.
+        """
+        Initialize the starting positions of the bot, fire, and button on the ship.
+        
+        Returns:
+            tuple: Bot's position, fire's position, and button's position.
+        """
+
+        # Create a copy of all open (unoccupied) cells on the ship
         open_cells = self.ship.open_cells.copy()
         
         # Randomly fetching positions for bot, fire and button
@@ -576,152 +603,3 @@ class GameManager:
                     grid_str += "1 "
             grid_str += "\n"
         return grid_str
-
-    ########################################## Extra Strategy ##################################################
-    
-    def heuristic(self, bot_position, fire_positions, goal_position):
-        proximity = self.calculate_fire_proximity(bot_position, fire_positions)
-        distance_to_goal = self.bfs_distance(bot_position, goal_position, fire_positions)
-        proximity_danger = min(proximity.values())
-
-        hueristic_points = 500
-        if bot_position == goal_position:
-            hueristic_points += 1000
-        weight_to_goal = 10
-        weight_from_fire = 4
-        hueristic_points += proximity_danger* weight_from_fire
-        hueristic_points -= distance_to_goal*weight_to_goal
-
-        return hueristic_points
-        #print(f"hueristic_value: {hueristic_value}")
-    
-    
-    def apply_move(self, current_position, move):
-        return move
-            
-    def get_valid_moves(self, position):
-        return [cell for cell in self.ship.get_open_neighbors(position) if cell not in self.fire.cells_on_fire]
-
-            
-    def minimax(self, depth, bot_position, fire_positions, is_maximizing):
-        if depth == 0:
-            #print(f"Passing: bot position: {bot_position}")
-            return self.heuristic(bot_position, fire_positions, self.button_position)
-        
-        if self.is_game_over(bot_position, fire_positions):
-            if is_maximizing:
-                return float('inf')
-            else:
-                return float('-inf')
-
-
-        if self.button_position in fire_positions:  # Button is on fire
-            return float('-inf')
-
-        valid_moves = self.get_valid_moves(bot_position)
-
-        if is_maximizing:  # bot's move
-            max_evaluation = float('-inf')
-
-            for move in valid_moves:
-                new_bot_position = self.apply_move(bot_position, move)
-                eval = self.minimax(depth-1, new_bot_position, fire_positions, False)
-                max_evaluation = max(max_evaluation, eval)
-                if eval == float('inf'):
-                    print(f"[Max] Depth: {depth}, Bot Pos: {new_bot_position}, Eval: {eval}")
-            #print(f"max eval: {max_evaluation}")
-            return max_evaluation
-
-        else:  # fire's move
-            min_evaluation = float('inf')
-            predicted_fire_spreads = self.predict_fire_spread(1)  # Only 1 step ahead for the fire
-
-            for fire_spread in predicted_fire_spreads:
-                eval = self.minimax(depth-1, bot_position, fire_spread, True)
-                if eval == float('-inf'):
-                    print(f"[Min] Depth: {depth}, Bot Pos: {bot_position}, Fire Spread: {fire_spread}, Eval: {eval}")
-                min_evaluation = min(min_evaluation, eval)
-            return min_evaluation
-
-
-    def best_move(self, bot_position, fire_positions, depth):
-        best_value = float('-inf')
-        best_move = None
-
-        for move in self.get_valid_moves(bot_position):
-            new_bot_position = self.apply_move(bot_position, move)
-            move_value = self.minimax(depth, new_bot_position, fire_positions, False)
-            print(f"move: {move} and move value: {move_value}")
-            if move_value > best_value:
-                best_value = move_value
-                best_move = move
-        return best_move
-    
-    
-    def is_game_over(self, bot_position, fire_positions):
-        # Check if the bot is on fire.
-        if bot_position in fire_positions:
-            return True
-
-        if bot_position == self.button_position:
-            return False
-        # Check if the button is on fire.
-        if self.button_position in fire_positions:
-            return True
-
-        # Check if there is no path to the goal.
-        path_to_button = self.get_better_short_path()
-        if path_to_button is None:
-            return True
-
-        return False
-
-    
-    
-    def combo_strategy(self):
-        path_to_goal = self.get_better_short_path()  
-        game_won = False
-        
-        while self.bot.is_alive and not game_won:
-            curr_position = self.bot.position
-            fire_positions = self.fire.cells_on_fire.copy()
-            best_move = self.best_move(curr_position, fire_positions, depth=4)
-            #print(f"best_move: {best_move}")
-            if best_move:
-                self.bot.position = self.apply_move(self.bot.position, best_move)
-            else:
-                print("No safe move found!")
-                break
-
-            # Check if bot reached the goal.
-            if self.bot.position == self.button_position:
-                game_won = True
-                print("You won!")
-                break
-            #print(self.bot.position)
-            self.fire.spread_fire()
-            print(self)
-
-            # Check if the game is over because of the fire.
-            if self.is_game_over(self.bot.position, self.fire.cells_on_fire):
-                print("Inside game over...")
-                print("Game Over!")
-                break
-        if game_won == True:
-            return "W"
-        else:
-            return "L"
-    
-    
-    
-
-
-
-
-
-                    
-                    
-                
-                
-
-
