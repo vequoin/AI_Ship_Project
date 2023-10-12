@@ -145,7 +145,6 @@ class GameManager:
         game_won = False
 
         while self.bot.is_alive and not game_won:
-            #print(f"Cells on fire: {self.fire.cells_on_fire}")
             self.bot.move(getPath[step])
             step += 1
 
@@ -158,7 +157,6 @@ class GameManager:
                 return "L"
 
             self.fire.spread_fire()
-            #print(self)
 
             if self.bot.position == self.button_position:
                 game_won = True
@@ -272,14 +270,22 @@ class GameManager:
     
         return (0 <= x < m) and (0 <= y < n)
 
-            
+     # returns the manhatten distance of point 1 and point 2       
     def manhattan_distance(self, point1, point2):
         # Returns the Manhattan distance
         return abs(point1[0] - point2[0]) + abs(point1[1] - point2[1])
 
     
     def predict_fire_spread(self, depth):
-        # Predicts the spread of fire up to 10 depths.
+        '''Predicts the spread of fire up to a depth of 5. It calculates the probability of which cells can catch fire after a certain number of turns 
+        which are then assigned weights based on the probability calculated
+        Args:
+        depth (int): Number of steps (turns) ahead to predict.
+    
+        Returns:
+        list: List of sets, where each set contains the cells predicted to catch fire at each depth.
+        '''
+         # Create a copy of the ship's current state
         generated = [row[:] for row in self.ship.ship]
 
         # Mark the current fire positions on the generated grid.
@@ -311,6 +317,7 @@ class GameManager:
 
         return future_fire_positions
 
+    
     def get_open_cells(self, cell, ship):
         '''Gets all the open cells'''
         neighbors = self.get_neighbors(cell)
@@ -327,7 +334,8 @@ class GameManager:
         x, y = cell
         m, n = len(self.ship.ship), len(self.ship.ship[0])
         return 0 <= x < m and 0 <= y < n
-    
+        
+    '''A utility function to get the bfs distance from the button to the bot for hueristic purposes'''
     def bfs_distance(self, start, target, fire_positions):
         # Uses BFS to give the distance to the button
         queue = [start]
@@ -350,7 +358,8 @@ class GameManager:
                             queue.append((nx, ny))
             depth += 1
         return float('inf')
-    
+
+    '''This is a heuristic function that calculates the bfs distance to the fire cells from the bot used to measure distances'''
     def bfs_distance_fire(self, start,fire, fire_positions):
         # Uses BFS to give the distance from the bot to the fire
         queue = [start]
@@ -375,9 +384,14 @@ class GameManager:
         return float('-inf')
 
     
-    
     def calculate_fire_proximity(self, bot_position, fire_positions):
-        # Uses BFS to give the distance from the bot to the fire in all directions
+        """
+        Calculate the distance from the bot to the nearest fire in each direction (up, down, left, right) using BFS.
+    
+        :param bot_position: A tuple indicating the current position of the bot.
+        :param fire_positions: A list of tuples indicating the positions of all fires.
+        :return: A dictionary containing the distance to the nearest fire for each valid direction.
+        """
         proximity = {}
         for direction in ['up', 'down', 'left', 'right']:
             dx, dy = {
@@ -414,18 +428,31 @@ class GameManager:
     
     
     def calculate_path_based_on_risk(self, start, goal, risk_map):
-        # Calculates the new path based on the risk of running into the fire.
+         """
+        Calculate the optimal path from start to goal based on risk values.
+    
+        :param start: A tuple indicating the starting position.
+        :param goal: A tuple indicating the goal position.
+        :param risk_map: A 2D list representing the risk values at each position.
+        :return: A list of positions indicating the path from start to goal.
+        """
+        # Create a copy of the risk_map so as not to modify the original.
         temp_risk_map = [row.copy() for row in risk_map]
 
+        # Define a penalty for visiting already visited nodes to discourage revisiting them.
         VISITED_PENALTY = 40
         for node in self.visited_nodes:
             x, y = node
             temp_risk_map[x][y] += VISITED_PENALTY
-        
+
+        # Initialize the open set with the start node, its path so far, and its g(n) value.
         open_set = [(start, [], 0)]  # Tuple: (position, path_so_far, g(n))
-        visited = set() 
+        visited = set()  # Set to keep track of visited nodes.
+        
         while open_set:
+            # Sort the open set based on the heuristic (f(n) = g(n) + h(n)).
             open_set.sort(key=lambda x: x[2] + self.manhattan_distance(x[0], goal))
+            # Pop the node with the lowest f(n) value.
             current, path, g_n = open_set.pop(0)    
             if current == goal:
                 return path 
@@ -436,18 +463,24 @@ class GameManager:
                     risk = temp_risk_map[neighbor[0]][neighbor[1]]
                     new_path = list(path)
                     new_path.append(neighbor)
-                    open_set.append((neighbor, new_path, g_n + risk))
-        #print(temp_risk_map)  
+                    open_set.append((neighbor, new_path, g_n + risk))  
         return None  
     
     def create_risk_map(self, future_fire_positions):
-        # Initialize all cells with 0 risk
+        """
+        Create a 2D risk map based on future fire positions.
+    
+        :param future_fire_positions: A list of lists, where each sublist contains the fire positions at a certain future time step.
+        :return: A 2D list representing the risk values at each position.
+        """
         risk_map = [[0 for _ in range(len(self.ship.ship[0]))] for _ in range(len(self.ship.ship))]
         for depth, cells in enumerate(future_fire_positions):
+            # Calculate the risk value based on the depth (future time step).
+            # The risk increases quadratically with the time step and is then multiplied by 10.
+            # This is just one way of assigning risk, and it can be adjusted as needed.
             risk_value = ((depth*depth) + 1) * 10  # Example risk assignment. Adjust as needed.
             for cell in cells:
                 risk_map[cell[0]][cell[1]] = risk_value
-        #print(risk_map)
         return risk_map
             
 
@@ -472,30 +505,28 @@ class GameManager:
         proximity = self.calculate_fire_proximity(curr_position, self.fire.cells_on_fire)
         distance_to_goal = self.bfs_distance(curr_position, self.button_position, self.fire.cells_on_fire)
         proximity_danger = min(proximity.values())
+        # If the closest fire is much farther than the goal (1.75 times the distance), switch to Strategy Two
         if proximity_danger > 1.75*distance_to_goal:
-            verdict =  self.strategy_two()
-            if verdict == "W":
-                return "T"
-            elif verdict == "L":
-                return "S"
+            return self.strategy_two()
         else:
             while self.bot.is_alive:
                 curr_pos = self.bot.position
+                # If bot is close to the goal (based on Manhattan distance) and bfs distance, switch to endgame phase and strategy 2. 
                 if self.manhattan_distance(self.bot.position, self.button_position) < 6:
                     distance_to_goal = self.bfs_distance(curr_pos, self.button_position, self.fire.cells_on_fire)
-                    print(self)
-                    print(f"distance to goal: {distance_to_goal}")
                     if distance_to_goal < 8:
-                        print("in distance to goal")
-                        print("Starting Endgame.....")
                         return self.strategy_two()
-                # Predict the spread of fire
+    
                 proximity = self.calculate_fire_proximity(self.bot.position, self.fire.cells_on_fire)
+
+                # Predict how the fire will spread over the next 5 turns
                 future_fire_positions = self.predict_fire_spread(5)
-                #print(f"future_fire_positions: {future_fire_positions}") 
+
+                #create a risk map based on the predictions of fire spread
                 risk_map = self.create_risk_map(future_fire_positions)
-                #print(risk_map)
+            
                 self.visited_nodes.add(self.bot.position)
+                
                 # Calculate the path with current risk map
                 path = self.calculate_path_based_on_risk(self.bot.position, self.button_position, risk_map)
 
@@ -506,10 +537,45 @@ class GameManager:
                 next_step = path[0]
                 self.bot.move(next_step)
                 self.fire.spread_fire()
-                #print(self)
+                
                 if next_step == self.button_position:
                     print("Congratz! you have saved the ship and the crew!")
                     return "W"  # Win if bot reached the button
+
+     ############################################ Functions to execute different bots #######################################
+
+
+      def runGame(self):
+        self.ship.fire_instance = self.fire
+        #game_won = False
+        if self.bot_strategy == "1":
+            return self.strategy_one()
+        elif self.bot_strategy == "2":
+            return self.strategy_two()
+        elif self.bot_strategy == "3":
+            return self.strategy_three()
+        elif self.bot_strategy == "4":
+            return self.strategy_four()
+        elif self.bot_strategy == "5":
+            return self.combo_strategy()
+            
+    # Prints the game Manager object , it prints the current state of the ship              
+    def __str__(self):
+        grid_str = ""
+        for i, row in enumerate(self.ship.ship):  
+            for j, cell in enumerate(row):
+                if (i, j) in self.fire.cells_on_fire: 
+                    grid_str += "F "
+                elif (i, j) == self.bot.position:  
+                    grid_str += "B "
+                elif (i, j) == self.button_position:  
+                    grid_str += "$ "
+                elif cell == 0:
+                    grid_str += "0 "
+                else:
+                    grid_str += "1 "
+            grid_str += "\n"
+        return grid_str
 
     ########################################## Extra Strategy ##################################################
     
@@ -645,55 +711,6 @@ class GameManager:
             return "W"
         else:
             return "L"
-     
-    
-    def runGame(self):
-        self.ship.fire_instance = self.fire
-        #game_won = False
-        if self.bot_strategy == "1":
-            return self.strategy_one()
-        elif self.bot_strategy == "2":
-            return self.strategy_two()
-        elif self.bot_strategy == "3":
-            return self.strategy_three()
-        elif self.bot_strategy == "4":
-            return self.strategy_four()
-        elif self.bot_strategy == "5":
-            return self.combo_strategy()
-            
-                    
-    def __str__(self):
-        grid_str = ""
-        for i, row in enumerate(self.ship.ship):  
-            for j, cell in enumerate(row):
-                if (i, j) in self.fire.cells_on_fire: 
-                    grid_str += "F "
-                elif (i, j) == self.bot.position:  
-                    grid_str += "B "
-                elif (i, j) == self.button_position:  
-                    grid_str += "$ "
-                elif cell == 0:
-                    grid_str += "0 "
-                else:
-                    grid_str += "1 "
-            grid_str += "\n"
-        return grid_str
-
-
-
-def main():
-    
-    game = GameManager(10,1,7)
-    print(game)
-    firepositions = game.predict_fire_spread(10)
-    print(firepositions)
-
-    
-
-    
-
-if __name__ == "__main__":
-    main()
     
     
     
