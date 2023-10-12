@@ -4,7 +4,13 @@ import random
 class Fire:
 
     def __init__(self, ship, q, start_cell) -> None:
-        # Initializes a Fire object with its attributes.
+        """Initializes a Fire instance.
+
+        Args:
+            ship (Ship): The ship object on which the fire is spreading.
+            q (float): Probability of fire spreading to an adjacent cell.
+            start_cell (tuple): Coordinates of the initial cell where the fire starts.
+        """
         self.ship = ship  # Assigns the ship where the fire is spreading.
         self.q = q  # Sets the probability of fire spreading.
         self.start_cell = start_cell  # Sets the initial cell where the fire starts.
@@ -12,7 +18,10 @@ class Fire:
         self.cells_on_fire.add(self.start_cell)  # Adds the starting cell to the set of cells on fire.
     
     def spread_fire(self):
-        # Simulates the spread of fire to neighboring cells based on the given probability.
+        """Simulates the spread of fire based on the probability `q`.
+
+        Fire spreads to an open neighboring cell based on the number of its adjacent cells already on fire.
+        """
         next_cells_on_fire = set()  # Create a set to store cells that will catch fire next.
         for cell in self.cells_on_fire:
             all_neighbor_cells = self.ship.get_open_neighbors(cell)  
